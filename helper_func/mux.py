@@ -10,12 +10,8 @@ progress_pattern = re.compile(
 )
 
 def parse_progress(line):
-    items = {
-        key: value for key, value in progress_pattern.findall(line)
-    }
-    if not items:
-        return None
-    return items
+    items = dict(progress_pattern.findall(line))
+    return items or None
 
 async def readlines(stream):
     pattern = re.compile(br'[\r\n]+')
@@ -32,32 +28,30 @@ async def readlines(stream):
 
 async def read_stderr(start, msg, process):
     async for line in readlines(process.stderr):
-            line = line.decode('utf-8')
-            progress = parse_progress(line)
-            if progress:
-                #Progress bar logic
-                now = time.time()
-                diff = start-now
-                text = 'PROGRESS\n'
-                text += 'Size : {}\n'.format(progress['size'])
-                text += 'Time : {}\n'.format(progress['time'])
-                text += 'Speed : {}\n'.format(progress['speed'])
+        line = line.decode('utf-8')
+        if progress := parse_progress(line):
+            #Progress bar logic
+            now = time.time()
+            diff = start-now
+            text = 'PROGRESS\n' + f"Size : {progress['size']}\n"
+            text += f"Time : {progress['time']}\n"
+            text += f"Speed : {progress['speed']}\n"
 
-                if round(diff % 5)==0:
-                    try:
-                        await msg.edit( text )
-                    except:
-                        pass
+            if round(diff % 5)==0:
+                try:
+                    await msg.edit( text )
+                except:
+                    pass
 
 async def softmux_vid(vid_filename, sub_filename, msg):
 
     start = time.time()
-    vid = Config.DOWNLOAD_DIR+'/'+vid_filename
-    sub = Config.DOWNLOAD_DIR+'/'+sub_filename
+    vid = f'{Config.DOWNLOAD_DIR}/{vid_filename}'
+    sub = f'{Config.DOWNLOAD_DIR}/{sub_filename}'
 
     out_file = '.'.join(vid_filename.split('.')[:-1])
-    output = out_file+'1.mkv'
-    out_location = Config.DOWNLOAD_DIR+'/'+output
+    output = f'{out_file}1.mkv'
+    out_location = f'{Config.DOWNLOAD_DIR}/{output}'
     sub_ext = sub_filename.split('.').pop()
     command = [
             'ffmpeg','-hide_banner',
@@ -78,14 +72,17 @@ async def softmux_vid(vid_filename, sub_filename, msg):
             )
 
     # https://github.com/jonghwanhyeon/python-ffmpeg/blob/ccfbba93c46dc0d2cafc1e40ecb71ebf3b5587d2/ffmpeg/ffmpeg.py#L114
-    
+
     await asyncio.wait([
             read_stderr(start,msg, process),
             process.wait(),
         ])
-    
+
     if process.returncode == 0:
-        await msg.edit('Muxing  Completed Successfully!\n\nTime taken : {} seconds'.format(round(start-time.time())))
+        await msg.edit(
+            f'Muxing  Completed Successfully!\n\nTime taken : {round(start-time.time())} seconds'
+        )
+
     else:
         await msg.edit('An Error occured while Muxing!')
         return False
@@ -96,40 +93,50 @@ async def softmux_vid(vid_filename, sub_filename, msg):
 async def hardmux_vid(vid_filename, sub_filename, msg):
     
     start = time.time()
-    vid = Config.DOWNLOAD_DIR+'/'+vid_filename
-    sub = Config.DOWNLOAD_DIR+'/'+sub_filename
-    
+    vid = f'{Config.DOWNLOAD_DIR}/{vid_filename}'
+    sub = f'{Config.DOWNLOAD_DIR}/{sub_filename}'
+
     out_file = '.'.join(vid_filename.split('.')[:-1])
-    output = out_file+'1.mp4'
-    out_location = Config.DOWNLOAD_DIR+'/'+output
-    
+    output = f'{out_file}1.mp4'
+    out_location = f'{Config.DOWNLOAD_DIR}/{output}'
+
     command = [
-            'ffmpeg','-hide_banner',
-            '-i',vid,
-            '-vf','subtitles='+sub,
-            '-c:v','h264',
-            '-preset','ultrafast',
-            '-y',out_location
-            ]
+        'ffmpeg',
+        '-hide_banner',
+        '-i',
+        vid,
+        '-vf',
+        f'subtitles={sub}',
+        '-c:v',
+        'h264',
+        '-preset',
+        'ultrafast',
+        '-y',
+        out_location,
+    ]
+
     process = await asyncio.create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             )
-    
+
     # https://github.com/jonghwanhyeon/python-ffmpeg/blob/ccfbba93c46dc0d2cafc1e40ecb71ebf3b5587d2/ffmpeg/ffmpeg.py#L114
-    
+
     await asyncio.wait([
             read_stderr(start,msg, process),
             process.wait(),
         ])
-    
+
     if process.returncode == 0:
-        await msg.edit('Muxing  Completed Successfully!\n\nTime taken : {} seconds'.format(round(start-time.time())))
+        await msg.edit(
+            f'Muxing  Completed Successfully!\n\nTime taken : {round(start-time.time())} seconds'
+        )
+
     else:
         await msg.edit('An Error occured while Muxing!')
         return False
-    
+
     time.sleep(2)
     return output

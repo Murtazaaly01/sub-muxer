@@ -10,10 +10,7 @@ db = Db()
 
 async def _check_user(filt, c, m):
     chat_id = str(m.from_user.id)
-    if chat_id in Config.ALLOWED_USERS:
-        return True
-    else :
-        return False
+    return chat_id in Config.ALLOWED_USERS
 
 check_user = filters.create(_check_user)
 
@@ -26,12 +23,12 @@ async def softmux(client, message):
     text = ''
     if not og_vid_filename :
         text += 'First send a Video File\n'
-    if not og_sub_filename :
+    if not og_sub_filename:
         text += 'Send a Subtitle File!'
 
-    if not (og_sub_filename or og_vid_filename) :
-        await client.send_message(chat_id, text)
-        return
+        if not og_vid_filename:
+            await client.send_message(chat_id, text)
+            return
 
     text = 'Your File is Being Soft Subbed. This should be done in few seconds!'
     sent_msg = await client.send_message(chat_id, text)
@@ -41,7 +38,11 @@ async def softmux(client, message):
         return
 
     final_filename = db.get_filename(chat_id)
-    os.rename(Config.DOWNLOAD_DIR+'/'+softmux_filename,Config.DOWNLOAD_DIR+'/'+final_filename)
+    os.rename(
+        f'{Config.DOWNLOAD_DIR}/{softmux_filename}',
+        f'{Config.DOWNLOAD_DIR}/{final_filename}',
+    )
+
 
     start_time = time.time()
     try:
@@ -56,13 +57,14 @@ async def softmux(client, message):
                 document = os.path.join(Config.DOWNLOAD_DIR, final_filename),
                 caption = final_filename
                 )
-        text = 'File Successfully Uploaded!\nTotal Time taken : {} seconds'.format(round(time.time()-start_time))
+        text = f'File Successfully Uploaded!\nTotal Time taken : {round(time.time()-start_time)} seconds'
+
         await sent_msg.edit(text)
     except Exception as e:
         print(e)
         await client.send_message(chat_id, 'An error occured while uploading the file!\nCheck logs for details of the error!')
 
-    path = Config.DOWNLOAD_DIR+'/'
+    path = f'{Config.DOWNLOAD_DIR}/'
     os.remove(path+og_sub_filename)
     os.remove(path+og_vid_filename)
     try :
@@ -82,23 +84,27 @@ async def hardmux(client, message):
     text = ''
     if not og_vid_filename :
         text += 'First send a Video File\n'
-    if not og_sub_filename :
+    if not og_sub_filename:
         text += 'Send a Subtitle File!'
-    
-    if not (og_sub_filename or og_vid_filename) :
-        return await client.send_message(chat_id, text)
-    
+
+        if not og_vid_filename:
+            return await client.send_message(chat_id, text)
+
     text = 'Your File is Being Hard Subbed. This might take a long time!'
     sent_msg = await client.send_message(chat_id, text)
 
     hardmux_filename = await hardmux_vid(og_vid_filename, og_sub_filename, sent_msg)
-    
+
     if not hardmux_filename:
         return
-    
+
     final_filename = db.get_filename(chat_id)
-    os.rename(Config.DOWNLOAD_DIR+'/'+hardmux_filename,Config.DOWNLOAD_DIR+'/'+final_filename)
-    
+    os.rename(
+        f'{Config.DOWNLOAD_DIR}/{hardmux_filename}',
+        f'{Config.DOWNLOAD_DIR}/{final_filename}',
+    )
+
+
     start_time = time.time()
     try:
         await client.send_video(
@@ -112,13 +118,14 @@ async def hardmux(client, message):
                 video = os.path.join(Config.DOWNLOAD_DIR, final_filename),
                 caption = final_filename
                 )
-        text = 'File Successfully Uploaded!\nTotal Time taken : {} seconds'.format(round(time.time()-start_time))
+        text = f'File Successfully Uploaded!\nTotal Time taken : {round(time.time()-start_time)} seconds'
+
         await sent_msg.edit(text)
     except Exception as e:
         print(e)
         await client.send_message(chat_id, 'An error occured while uploading the file!\nCheck logs for details of the error!')
-    
-    path = Config.DOWNLOAD_DIR+'/'
+
+    path = f'{Config.DOWNLOAD_DIR}/'
     os.remove(path+og_sub_filename)
     os.remove(path+og_vid_filename)
     try :
