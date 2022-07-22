@@ -17,10 +17,7 @@ db = Db()
 
 async def _check_user(filt, c, m):
     chat_id = str(m.from_user.id)
-    if chat_id in Config.ALLOWED_USERS:
-        return True
-    else :
-        return False
+    return chat_id in Config.ALLOWED_USERS
 
 check_user = filters.create(_check_user)
 
@@ -31,15 +28,12 @@ async def save_doc(client, message):
     start_time = time.time()
     downloading = await client.send_message(chat_id, 'Downloading your File!')
     download_location = await client.download_media(
-        message = message,
-        file_name = Config.DOWNLOAD_DIR+'/',
-        progress = progress_bar,
-        progress_args = (
-            'Initializing',
-            downloading,
-            start_time
-        )
+        message=message,
+        file_name=f'{Config.DOWNLOAD_DIR}/',
+        progress=progress_bar,
+        progress_args=('Initializing', downloading, start_time),
     )
+
 
     if download_location is None:
         return client.edit_message_text(
@@ -60,17 +54,16 @@ async def save_doc(client, message):
     except:
         og_filename = False
 
-    if og_filename:
-        #os.rename(Config.DOWNLOAD_DIR+'/'+tg_filename,Config.DOWNLOAD_DIR+'/'+og_filename)
-        save_filename = og_filename
-    else :
-        save_filename = tg_filename
-
+    save_filename = og_filename or tg_filename
     ext = save_filename.split('.').pop()
-    filename = str(round(start_time))+'.'+ext
+    filename = f'{str(round(start_time))}.{ext}'
 
     if ext in ['srt','ass']:
-        os.rename(Config.DOWNLOAD_DIR+'/'+tg_filename,Config.DOWNLOAD_DIR+'/'+filename)
+        os.rename(
+            f'{Config.DOWNLOAD_DIR}/{tg_filename}',
+            f'{Config.DOWNLOAD_DIR}/{filename}',
+        )
+
         db.put_sub(chat_id, filename)
         if db.check_video(chat_id):
             text = 'Subtitle file downloaded successfully.\nChoose your desired muxing!\n[ /softmux , /hardmux ]'
@@ -84,7 +77,11 @@ async def save_doc(client, message):
         )
 
     elif ext in ['mp4','mkv']:
-        os.rename(Config.DOWNLOAD_DIR+'/'+tg_filename,Config.DOWNLOAD_DIR+'/'+filename)
+        os.rename(
+            f'{Config.DOWNLOAD_DIR}/{tg_filename}',
+            f'{Config.DOWNLOAD_DIR}/{filename}',
+        )
+
         db.put_video(chat_id, filename, save_filename)
         if db.check_sub(chat_id):
             text = 'Video file downloaded successfully.\nChoose your desired muxing.\n[ /softmux , /hardmux ]'
@@ -103,7 +100,7 @@ async def save_doc(client, message):
             chat_id = chat_id,
             message_id = downloading.message_id
         )
-        os.remove(Config.DOWNLOAD_DIR+'/'+filename)
+        os.remove(f'{Config.DOWNLOAD_DIR}/{filename}')
 
 
 @Client.on_message(filters.video & check_user & filters.private)
@@ -113,15 +110,12 @@ async def save_video(client, message):
     start_time = time.time()
     downloading = await client.send_message(chat_id, 'Downloading your File!')
     download_location = await client.download_media(
-        message = message,
-        file_name = Config.DOWNLOAD_DIR+'/',
-        progress = progress_bar,
-        progress_args = (
-            'Initializing',
-            downloading,
-            start_time
-            )
-        )
+        message=message,
+        file_name=f'{Config.DOWNLOAD_DIR}/',
+        progress=progress_bar,
+        progress_args=('Initializing', downloading, start_time),
+    )
+
 
     if download_location is None:
         return client.edit_message_text(
@@ -141,16 +135,16 @@ async def save_video(client, message):
         og_filename = message.document.filename
     except:
         og_filename = False
-    
-    if og_filename:
-        save_filename = og_filename
-    else :
-        save_filename = tg_filename
-    
+
+    save_filename = og_filename or tg_filename
     ext = save_filename.split('.').pop()
-    filename = str(round(start_time))+'.'+ext
-    os.rename(Config.DOWNLOAD_DIR+'/'+tg_filename,Config.DOWNLOAD_DIR+'/'+filename)
-    
+    filename = f'{str(round(start_time))}.{ext}'
+    os.rename(
+        f'{Config.DOWNLOAD_DIR}/{tg_filename}',
+        f'{Config.DOWNLOAD_DIR}/{filename}',
+    )
+
+
     db.put_video(chat_id, filename, save_filename)
     if db.check_sub(chat_id):
         text = 'Video file downloaded successfully.\nChoose your desired muxing.\n[ /softmux , /hardmux ]'
